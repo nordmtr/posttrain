@@ -5,6 +5,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import torch
+from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
+
 from posttrain.config import ModelConfig
 
 
@@ -23,20 +32,9 @@ class LoadedModel:
     adapter_mode: AdapterMode
 
 
-def _missing_training_extra(exc: ImportError) -> RuntimeError:
-    return RuntimeError(
-        "Missing training dependencies. Install them with `uv sync --extra training` "
-        "before running non-dry-run training stages."
-    )
-
-
 def resolve_device(device_preference: str) -> str:
     normalized = device_preference.lower().strip()
     if normalized == "auto":
-        try:
-            import torch
-        except ImportError:
-            return "cpu"
         return "cuda" if torch.cuda.is_available() else "cpu"
 
     if normalized not in {"cpu", "cuda"}:
@@ -64,7 +62,7 @@ def resolve_adapter_mode(model_cfg: ModelConfig, resolved_device: str) -> Adapte
     if importlib.util.find_spec("bitsandbytes") is None:
         raise RuntimeError(
             "GPU run requested with 4-bit quantization, but bitsandbytes is not installed. "
-            "Install it in the environment before running the GPU preset."
+            "Install it with `uv sync --group gpu` before running the GPU preset."
         )
 
     return AdapterMode(
@@ -82,11 +80,6 @@ def _target_task_type(stage_name: str) -> str:
 
 
 def _build_lora_config(model_cfg: ModelConfig, stage_name: str) -> Any:
-    try:
-        from peft import LoraConfig
-    except ImportError as exc:
-        raise _missing_training_extra(exc) from exc
-
     return LoraConfig(
         r=model_cfg.lora_r,
         lora_alpha=model_cfg.lora_alpha,
@@ -97,15 +90,8 @@ def _build_lora_config(model_cfg: ModelConfig, stage_name: str) -> Any:
 
 
 def load_tokenizer(model_cfg: ModelConfig) -> Any:
-    try:
-        from transformers import AutoTokenizer
-    except ImportError as exc:
-        raise _missing_training_extra(exc) from exc
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_cfg.tokenizer_id or model_cfg.model_id
-    )
-    if tokenizer.pad_token is None:
+    tokenizer: Any = AutoTokenizer.from_pretrained(model_cfg.tokenizer_id or model_cfg.model_id)
+    if getattr(tokenizer, "pad_token", None) is None:
         tokenizer.pad_token = tokenizer.eos_token
     return tokenizer
 
@@ -116,19 +102,11 @@ def load_causal_lm(
     stage_name: str,
     prior_adapter_path: Path | None,
 ) -> LoadedModel:
-    try:
-        from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training
-        from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-    except ImportError as exc:
-        raise _missing_training_extra(exc) from exc
-
     tokenizer = load_tokenizer(model_cfg)
 
     quantization_config = None
     model_kwargs: dict[str, Any] = {}
     if adapter_mode.active_4bit:
-        import torch
-
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
@@ -149,9 +127,7 @@ def load_causal_lm(
         model = prepare_model_for_kbit_training(model)
 
     if prior_adapter_path is not None and prior_adapter_path.exists():
-        model = PeftModel.from_pretrained(
-            model, str(prior_adapter_path), is_trainable=True
-        )
+        model = PeftModel.from_pretrained(model, str(prior_adapter_path), is_trainable=True)
     else:
         lora_config = _build_lora_config(model_cfg, stage_name)
         model = get_peft_model(model, lora_config)
@@ -164,19 +140,11 @@ def load_reference_causal_lm(
     adapter_mode: AdapterMode,
     adapter_path: Path | None,
 ) -> LoadedModel:
-    try:
-        from peft import PeftModel
-        from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-    except ImportError as exc:
-        raise _missing_training_extra(exc) from exc
-
     tokenizer = load_tokenizer(model_cfg)
     quantization_config = None
     model_kwargs: dict[str, Any] = {}
 
     if adapter_mode.active_4bit:
-        import torch
-
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
@@ -207,19 +175,11 @@ def load_reward_model(
     adapter_mode: AdapterMode,
     prior_adapter_path: Path | None,
 ) -> LoadedModel:
-    try:
-        from peft import PeftModel, get_peft_model, prepare_model_for_kbit_training
-        from transformers import AutoModelForSequenceClassification, BitsAndBytesConfig
-    except ImportError as exc:
-        raise _missing_training_extra(exc) from exc
-
     tokenizer = load_tokenizer(model_cfg)
     quantization_config = None
     model_kwargs: dict[str, Any] = {}
 
     if adapter_mode.active_4bit:
-        import torch
-
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
@@ -241,9 +201,7 @@ def load_reward_model(
         model = prepare_model_for_kbit_training(model)
 
     if prior_adapter_path is not None and prior_adapter_path.exists():
-        model = PeftModel.from_pretrained(
-            model, str(prior_adapter_path), is_trainable=True
-        )
+        model = PeftModel.from_pretrained(model, str(prior_adapter_path), is_trainable=True)
     else:
         lora_config = _build_lora_config(model_cfg, "rlhf_reward")
         model = get_peft_model(model, lora_config)
