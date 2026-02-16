@@ -1,0 +1,3 @@
+{"prompt":"What is 5 + 7?","chosen":"5 + 7 equals 12.","rejected":"5 + 7 equals 57."}
+{"prompt":"Complete: The sky is","chosen":"The sky is typically blue during a clear day.","rejected":"The sky is made of brick."}
+{"prompt":"Answer politely: hi","chosen":"Hello! How can I help you today?","rejected":"No."}
