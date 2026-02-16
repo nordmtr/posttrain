@@ -20,10 +20,10 @@ The project uses adapter training (`LoRA` / `QLoRA`) and avoids full-model fine-
 uv sync
 ```
 
-For real training stages (non-dry-run), install training extras:
+For GPU QLoRA runs, install the GPU dependency group:
 
 ```bash
-uv sync --extra training
+uv sync --group gpu
 ```
 
 ## Run
@@ -51,7 +51,8 @@ uv run python -m posttrain run --preset gpu --stages sft,dpo,grpo,rlhf --device 
 - `smoke` preset uses `sshleifer/tiny-gpt2` and local fixture datasets in `data/smoke/`.
 - `gpu` preset uses `Qwen/Qwen2.5-1.5B-Instruct`.
 - If `use_4bit=true` and device is CPU, the pipeline logs a fallback to LoRA (non-quantized).
-- If `use_4bit=true` and GPU is requested without `bitsandbytes`, execution fails with a clear error.
+- If `use_4bit=true` and GPU is requested without the `gpu` group (`bitsandbytes`), execution fails with a clear error.
+- On Linux x86_64, upstream `torch` wheels include CUDA runtime transitive dependencies even for CPU execution.
 
 ## Stage data schemas
 

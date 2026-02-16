@@ -21,7 +21,7 @@
 - `src/posttrain/presets.py`
 : built-in `smoke` and `gpu` presets with model IDs and default paths.
 - `pyproject.toml`
-: heavy training stack is under optional extra `training`; dry-run and unit tests work without it.
+: smoke-stage runtime stack (`torch`, `transformers`, `peft`) is in base dependencies; GPU-specific QLoRA dependency (`bitsandbytes`) is in the `gpu` dependency group.
 
 ## Model Loading and Adapter Strategy
 

@@ -63,9 +63,7 @@ class GRPOStage:
             reference.model.to(device)
 
         reference.model.eval()
-        optimizer = torch.optim.AdamW(
-            policy.model.parameters(), lr=context.config.grpo.learning_rate
-        )
+        optimizer = torch.optim.AdamW(policy.model.parameters(), lr=context.config.grpo.learning_rate)
 
         losses: list[float] = []
         rewards_seen: list[float] = []
@@ -78,9 +76,7 @@ class GRPOStage:
             completions: list[str] = []
             rewards: list[float] = []
             for _ in range(self.group_size):
-                completion = generate_completion(
-                    policy.model, policy.tokenizer, prompt, device
-                )
+                completion = generate_completion(policy.model, policy.tokenizer, prompt, device)
                 completions.append(completion)
                 reward = 1.0 if target in completion.strip().lower() else 0.0
                 rewards.append(reward)
@@ -89,15 +85,11 @@ class GRPOStage:
             reward_mean = sum(rewards) / max(len(rewards), 1)
 
             total_loss = torch.tensor(0.0, device=device)
-            for completion, reward in zip(completions, rewards):
+            for completion, reward in zip(completions, rewards, strict=True):
                 advantage = reward - reward_mean
-                logp = response_logprob(
-                    policy.model, policy.tokenizer, prompt, completion, device
-                )
+                logp = response_logprob(policy.model, policy.tokenizer, prompt, completion, device)
                 with torch.no_grad():
-                    ref_logp = response_logprob(
-                        reference.model, reference.tokenizer, prompt, completion, device
-                    )
+                    ref_logp = response_logprob(reference.model, reference.tokenizer, prompt, completion, device)
                 kl = logp - ref_logp
                 total_loss = total_loss + (-(advantage * logp) + self.kl_coeff * kl)
 

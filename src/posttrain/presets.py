@@ -11,7 +11,6 @@ from posttrain.config import (
     StageTrainConfig,
 )
 
-
 PRESET_SMOKE = "smoke"
 PRESET_GPU = "gpu"
 

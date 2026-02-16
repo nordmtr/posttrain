@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ class StageArtifact:
 class ArtifactRegistry:
     def __init__(self, output_root: Path, run_name: str | None = None) -> None:
         self.output_root = output_root
-        self.run_name = run_name or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        self.run_name = run_name or datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         self.run_dir = self.output_root / self.run_name
         self.run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -42,13 +42,9 @@ class ArtifactRegistry:
         )
 
     def write_metrics(self, artifact: StageArtifact, metrics: dict[str, Any]) -> None:
-        artifact.metrics_path.write_text(
-            json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        artifact.metrics_path.write_text(json.dumps(metrics, indent=2, sort_keys=True), encoding="utf-8")
 
     def write_resolved_config(self, serialized: dict[str, Any]) -> Path:
         path = self.run_dir / "config.resolved.json"
-        path.write_text(
-            json.dumps(serialized, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        path.write_text(json.dumps(serialized, indent=2, sort_keys=True), encoding="utf-8")
         return path

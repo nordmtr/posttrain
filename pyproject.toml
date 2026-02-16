@@ -6,20 +6,13 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "pyyaml>=6.0.3",
+    "peft>=0.18.1",
+    "transformers>=5.1.0",
+    "torch>=2.10.0",
 ]
 
 [project.scripts]
 posttrain = "posttrain.cli:main"
-
-[project.optional-dependencies]
-training = [
-    "accelerate>=1.12.0",
-    "bitsandbytes>=0.49.1",
-    "datasets>=4.5.0",
-    "peft>=0.18.1",
-    "transformers>=5.1.0",
-    "trl>=0.28.0",
-]
 
 [dependency-groups]
 dev = [
@@ -27,16 +20,32 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.15.1",
 ]
+gpu = [
+    "bitsandbytes>=0.49.1",
+]
 
 [build-system]
-requires = ["hatchling>=1.27.0"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/posttrain"]
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = ["notebooks/"]
 
-[tool.pytest.ini_options]
-pythonpath = ["src"]
+[tool.ruff.lint]
+select = ["E","F","I","UP","B"]   # UP=pyupgrade, B=bugbear, S=security
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+"**/{tests,docs,tools}/*" = ["E402"]
 
 [tool.pyrefly]
-ignore-missing-imports = ["torch", "torch.nn", "torch.nn.functional", "transformers", "peft"]
+project-includes = ["src", "tests"]
+ignore-missing-imports = [
+    "torch",
+    "torch.nn",
+    "torch.nn.functional",
+    "transformers",
+    "peft",
+]

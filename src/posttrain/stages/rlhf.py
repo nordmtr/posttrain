@@ -13,8 +13,8 @@ from posttrain.modeling import (
 from posttrain.stages.base import StageContext
 from posttrain.stages.common import (
     generate_completion,
-    reward_score,
     response_logprob,
+    reward_score,
     write_dry_run_marker,
 )
 from posttrain.types import StageName
@@ -68,12 +68,8 @@ class RLHFStage:
             chosen_text = f"{row['prompt']} {row['chosen']}"
             rejected_text = f"{row['prompt']} {row['rejected']}"
 
-            chosen_score = reward_score(
-                reward_loaded.model, reward_loaded.tokenizer, chosen_text, device
-            )
-            rejected_score = reward_score(
-                reward_loaded.model, reward_loaded.tokenizer, rejected_text, device
-            )
+            chosen_score = reward_score(reward_loaded.model, reward_loaded.tokenizer, chosen_text, device)
+            rejected_score = reward_score(reward_loaded.model, reward_loaded.tokenizer, rejected_text, device)
 
             loss = -F.logsigmoid(chosen_score - rejected_score)
             loss.backward()
@@ -117,9 +113,7 @@ class RLHFStage:
         for step in range(context.config.rlhf.ppo_steps):
             row = rows[step % len(rows)]
             prompt = row["prompt"]
-            completion = generate_completion(
-                policy_loaded.model, policy_loaded.tokenizer, prompt, device
-            )
+            completion = generate_completion(policy_loaded.model, policy_loaded.tokenizer, prompt, device)
 
             with torch.no_grad():
                 reward = reward_score(
@@ -130,13 +124,9 @@ class RLHFStage:
                 )
             rewards_seen.append(float(reward.detach().cpu()))
 
-            logp = response_logprob(
-                policy_loaded.model, policy_loaded.tokenizer, prompt, completion, device
-            )
+            logp = response_logprob(policy_loaded.model, policy_loaded.tokenizer, prompt, completion, device)
             with torch.no_grad():
-                ref_logp = response_logprob(
-                    reference.model, reference.tokenizer, prompt, completion, device
-                )
+                ref_logp = response_logprob(reference.model, reference.tokenizer, prompt, completion, device)
 
             kl_term = logp - ref_logp
             advantage = reward - context.config.rlhf.kl_coeff * kl_term.detach()
